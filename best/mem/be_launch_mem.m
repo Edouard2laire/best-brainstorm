@@ -75,15 +75,12 @@ end
 if ~OPTIONS.automatic.stand_alone
     bst_progress('start', 'Solving MEM', 'Solving MEM', 0, nbSmp);
 end
+
 isVerbose       = OPTIONS.optional.verbose;
 isStandAlone    = OPTIONS.automatic.stand_alone;
 
-[obj_slice, obj_const] = be_slice_obj(obj, OPTIONS);
-OPTIONS2 = OPTIONS;
-OPTIONS2.automatic   = rmfield(OPTIONS2.automatic,'Modality');
-OPTIONS2             = rmfield(OPTIONS2,'mandatory');
-OPTIONS2.optional.TimeSegment = [];
-OPTIONS2.optional.Baseline = [];
+[OPTIONS_litle, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS);
+
 
 if OPTIONS.solver.parallel_matlab == 1    
     
@@ -94,16 +91,13 @@ if OPTIONS.solver.parallel_matlab == 1
 
     time_it_starts = tic;
     parfor ii = 1 : nbSmp
-       [R, E, A, S] = MEM_mainLoop(ii,OPTIONS2, obj_slice(ii),obj_const);
-
-
-
-        entropy_drop(ii)    =   E;
-        final_alpha{ii}     =   A;
-        final_sigma{ii}     =   S;
         
-        %Store in a matrix
-        ImageSourceAmp(:, ii)      =  R;
+        [R, E, A, S] = MEM_mainLoop(ii,OPTIONS_litle, obj_slice(ii),obj_const);
+
+        entropy_drop(ii)        =  E;
+        final_alpha{ii}         =  A;
+        final_sigma{ii}         =  S;
+        ImageSourceAmp(:, ii)   =  R;
         if ~isStandAlone
             send(q, 1); 
         end
@@ -123,14 +117,13 @@ else
     time_it_starts = tic;
     for ii = 1 : nbSmp
 
-       [R, E, A, S] = MEM_mainLoop(ii,OPTIONS2, obj_slice(ii),obj_const);
+        [R, E, A, S] = MEM_mainLoop(ii,OPTIONS_litle, obj_slice(ii),obj_const);
 
-        entropy_drop(ii)	= E;        
-        final_alpha{ii}  	= A;
-        final_sigma{ii}     = S;
-        
-        % Store in matrix
-        ImageSourceAmp(:, ii)      =  R;
+        entropy_drop(ii)	    = E;        
+        final_alpha{ii}  	    = A;
+        final_sigma{ii}         = S;
+        ImageSourceAmp(:, ii)   = R;
+
         if ~isStandAlone
             bst_progress('inc', 1);
         end
@@ -212,7 +205,7 @@ function [R, E, A, S] = MEM_mainLoop(ii,OPTIONS, obj, obj_const)
         entropy_drop= mem_results_struct.entropy;
         act_proba   = mem_results_struct.active_probability;    
 
-        if OPTIONS.optional.verbose, fprintf('Sample %3d(%2d,%3.3f):',ii,obj.scale,obj.time); end;           
+        if OPTIONS.optional.verbose, fprintf('Sample %3d(%2d,%3.3f):',ii,obj.scale,obj.time); end
         
         % Print output
         if sum(isnan(J))

@@ -1,14 +1,7 @@
-function [obj_slice, obj_const] = be_slice_obj(obj, OPTIONS)
-    nbSmp = size(obj.ALPHA,2); 
+function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data,obj, OPTIONS)
+
+    nbSmp = size(Data,2); 
     obj_slice(nbSmp) = struct();
-
-    Data = [];
-
-    if ~isempty(OPTIONS.automatic.selected_samples)        
-        Data = [Data;obj.data{1}(:,OPTIONS.automatic.selected_samples(1,:))];                 
-    elseif ~strcmp(OPTIONS.mandatory.pipeline,'wMEM')
-        Data  = obj.data;
-    end
 
     for i = 1:nbSmp
 
@@ -67,6 +60,12 @@ function [obj_slice, obj_const] = be_slice_obj(obj, OPTIONS)
 
     obj_const.GreenM2  = obj.GreenM2;
     obj_const.gain     = obj.gain;
-     
+
+
+    OPTIONS.automatic   = rmfield(OPTIONS.automatic,'Modality');
+    OPTIONS             = rmfield(OPTIONS,'mandatory');
+    OPTIONS.optional.TimeSegment = [];
+    OPTIONS.optional.Baseline = [];
+
 end
 
