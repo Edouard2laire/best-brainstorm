@@ -48,7 +48,7 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data,obj, OPTIONS)
             obj_slice(i).noise_var = squeeze(obj.noise_var(:,:, idx_baseline) );
         else
 
-            obj_slice(i).noise_var = obj.noise_var;
+            obj_const.noise_var = obj.noise_var;
         end
 
 

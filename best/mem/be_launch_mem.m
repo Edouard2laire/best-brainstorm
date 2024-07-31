@@ -92,7 +92,7 @@ if OPTIONS.solver.parallel_matlab == 1
     time_it_starts = tic;
     parfor ii = 1 : nbSmp
         
-        [R, E, A, S] = MEM_mainLoop(ii,OPTIONS_litle, obj_slice(ii),obj_const);
+        [R, E, A, S] = MEM_mainLoop(ii, obj_slice(ii),obj_const,OPTIONS_litle);
 
         entropy_drop(ii)        =  E;
         final_alpha{ii}         =  A;
@@ -117,7 +117,7 @@ else
     time_it_starts = tic;
     for ii = 1 : nbSmp
 
-        [R, E, A, S] = MEM_mainLoop(ii,OPTIONS_litle, obj_slice(ii),obj_const);
+        [R, E, A, S] = MEM_mainLoop(ii,obj_slice(ii),obj_const,OPTIONS_litle);
 
         entropy_drop(ii)	    = E;        
         final_alpha{ii}  	    = A;
@@ -179,10 +179,9 @@ end
 
 % =========================================================================
 
-function [R, E, A, S] = MEM_mainLoop(ii,OPTIONS, obj, obj_const)
-    obj.GreenM2  = obj_const.GreenM2;
-    obj.gain     = obj_const.gain;
-
+function [R, E, A, S] = MEM_mainLoop(ii, obj, obj_const, OPTIONS)
+    obj = be_struct_copy_fields(obj, obj_const, []);
+    
     if ~sum(obj.clusters)
         if OPTIONS.optional.verbose
             disp(['MEM warning: The distributed dipoles could not be clusterized at sample ' num2str(ii) '. (null solution returned)']);
