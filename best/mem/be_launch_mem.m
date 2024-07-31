@@ -79,6 +79,11 @@ isVerbose       = OPTIONS.optional.verbose;
 isStandAlone    = OPTIONS.automatic.stand_alone;
 
 [obj_slice, obj_const] = be_slice_obj(obj, OPTIONS);
+OPTIONS2 = OPTIONS;
+OPTIONS2.automatic   = rmfield(OPTIONS2.automatic,'Modality');
+OPTIONS2             = rmfield(OPTIONS2,'mandatory');
+OPTIONS2.optional.TimeSegment = [];
+OPTIONS2.optional.Baseline = [];
 
 if OPTIONS.solver.parallel_matlab == 1    
     
@@ -87,16 +92,9 @@ if OPTIONS.solver.parallel_matlab == 1
         afterEach(q, @(x) bst_progress('inc', 1));
     end
 
-    OPTIONS2 = OPTIONS;
-    OPTIONS2.automatic   = rmfield(OPTIONS2.automatic,'Modality');
-    OPTIONS2             = rmfield(OPTIONS2,'mandatory');
-    OPTIONS2.optional.TimeSegment = [];
-    OPTIONS2.optional.Baseline = [];
-
     time_it_starts = tic;
-    startState = ticBytes(gcp);
     parfor ii = 1 : nbSmp
-       [R, E, A, S] = MEM_mainLoop2(ii,OPTIONS2, obj_slice(ii),obj_const, isVerbose);
+       [R, E, A, S] = MEM_mainLoop(ii,OPTIONS2, obj_slice(ii),obj_const);
 
 
 
@@ -111,51 +109,21 @@ if OPTIONS.solver.parallel_matlab == 1
         end
     end
 
-    endState1 = tocBytes(gcp,startState);
-    tocBytes(gcp,startState)
     time_it_ends = toc(time_it_starts);
-    if OPTIONS.optional.verbose
+    if isVerbose
         fprintf('%s, Elapsed CPU time is %5.2f seconds.\n', OPTIONS.mandatory.pipeline, time_it_ends);
     end
-    pause
-
-    time_it_starts2 = tic;
-    startState = ticBytes(gcp);
-
-    parfor ii = 1 : nbSmp
-
-        [R, E, A, S] = MEM_mainLoop(ii, Data, obj, OPTIONS);
-
-        entropy_drop(ii)    =   E;
-        final_alpha{ii}     =   A;
-        final_sigma{ii}     =   S;
-        
-        %Store in a matrix
-        ImageSourceAmp(:, ii)      =  R;
-        if ~OPTIONS.automatic.stand_alone
-            send(q, 1); 
-        end
-    end
-    endState2 = tocBytes(gcp,startState);
-    tocBytes(gcp,startState)
-
-    time_it_ends2 = toc(time_it_starts2);
-    if OPTIONS.optional.verbose
-        fprintf('1. %s, Elapsed CPU time is %5.2f seconds. %d byte\n', OPTIONS.mandatory.pipeline, time_it_ends, sum(endState1(:,1)));
-        fprintf('2. %s, Elapsed CPU time is %5.2f seconds. %d byte\n', OPTIONS.mandatory.pipeline, time_it_ends2, sum(endState2(:,1)));
-    end
-    pause
 
 else
-    if OPTIONS.optional.verbose
+    if isVerbose
         fprintf('%s, MEM at each samples (%d samples, may be done in parallel):', OPTIONS.mandatory.pipeline, nbSmp);
         fprintf('\nMultiresolution sample (j,t): j=0 corresponds to the sampling scale.\n');
     end
+
     time_it_starts = tic;
     for ii = 1 : nbSmp
-        [R, E, A, S] = MEM_mainLoop(ii, Data, obj, OPTIONS);
 
-        [R, E, A, S] = MEM_mainLoop2(ii,OPTIONS, obj_slice(ii), OPTIONS.optional.verbose);
+       [R, E, A, S] = MEM_mainLoop(ii,OPTIONS2, obj_slice(ii),obj_const);
 
         entropy_drop(ii)	= E;        
         final_alpha{ii}  	= A;
@@ -163,17 +131,18 @@ else
         
         % Store in matrix
         ImageSourceAmp(:, ii)      =  R;
-        if ~OPTIONS.automatic.stand_alone
+        if ~isStandAlone
             bst_progress('inc', 1);
         end
         
     end
     time_it_ends = toc(time_it_starts);
-    if OPTIONS.optional.verbose
+    if isVerbose
         fprintf('%s, Elapsed CPU time is %5.2f seconds.\n', OPTIONS.mandatory.pipeline, time_it_ends);
     end
 end
-if ~OPTIONS.automatic.stand_alone
+
+if ~isStandAlone
     bst_progress('stop');
 end
 
@@ -217,98 +186,12 @@ end
 
 % =========================================================================
 
-function [R, E, A, S] = MEM_mainLoop(ii, Data, obj, OPTIONS)
-
-    % MEM parameters structure
-    obj.ind    = ii;
-
-    obj.data   = Data(:,ii);
-    
-    obj.Jmne   = OPTIONS.automatic.Modality(1).Jmne(:,ii) ;
-    obj.Jmne   = obj.Jmne  ./ max(abs(obj.Jmne));
-
-
-    % check if there's a noise cov for each scale
-    if (size(obj.noise_var,3)>1) && OPTIONS.optional.baseline_shuffle ~= 1
-        if OPTIONS.optional.verbose
-            fprintf('%s, Noise variance at scale %i is selected\n',...
-                OPTIONS.mandatory.pipeline,OPTIONS.automatic.selected_samples(2,ii));
-        end
-        obj.noise_var = squeeze(obj.noise_var(:,:,OPTIONS.automatic.selected_samples(2,ii)) );
-    
-    elseif (size(obj.noise_var,3)>1) && OPTIONS.optional.baseline_shuffle == 1
-
-        tol = OPTIONS.optional.baseline_shuffle_windows / 2; 
-        idx_baseline = find(obj.time(ii) > OPTIONS.automatic.Modality(1).BaselineTime(1,:) & ...
-                            obj.time(ii) <=  (OPTIONS.automatic.Modality(1).BaselineTime(end,:)+tol));
-    
-        if isempty(idx_baseline) && obj.time(ii) > max(max(OPTIONS.automatic.Modality(1).BaselineTime))
-            idx_baseline = size(OPTIONS.automatic.Modality(1).BaselineTime,2);
-        elseif isempty(idx_baseline) && obj.time(ii) < min(min(OPTIONS.automatic.Modality(1).BaselineTime))
-            idx_baseline = 1;
-        elseif length(idx_baseline) > 1
-            idx_baseline = idx_baseline(2);
-        end
-
-        if OPTIONS.optional.verbose
-            fprintf('%s, Noise variance from baseline %i is selected\n',...
-                OPTIONS.mandatory.pipeline, idx_baseline);
-        end
-        obj.noise_var = squeeze(obj.noise_var(:,:, idx_baseline) );
-    end
-
-    if ~sum(obj.CLS(:,ii))
-        if OPTIONS.optional.verbose
-            disp(['MEM warning: The distributed dipoles could not be clusterized at sample ' num2str(ii) '. (null solution returned)']);
-        end
-        % Save empty solution
-        J               = zeros( size(obj.iModS) );
-        entropy_drop    = NaN;
-        act_proba       = NaN;
-        act_var         = [];
-    else
-        
-        obj.clusters    = obj.CLS(:,ii);
-        obj.active_probability = obj.ALPHA(:,ii);
-
-        % initialize the MEM
-        [OPTIONS, mem_structure, act_var] = be_memstruct(OPTIONS, obj);
-        
-        % solve the MEM for the current time
-        [J, mem_results_struct] = be_solve_mem(mem_structure);   
-            nclus       = max(obj.CLS(:,ii));
-            niter       = mem_results_struct.iterations;
-            entropy_drop= mem_results_struct.entropy;
-            act_proba   = mem_results_struct.active_probability;            
-         if OPTIONS.optional.verbose, fprintf('Sample %3d(%2d,%3.3f):',ii,obj.scale(ii),obj.time(ii)); end;           
-        
-        % Print output
-        if sum(isnan(J))
-            fprintf('killed\n');
-            %mem_results_struct.intenties = zeros( size(obj.iModS) );
-            J(isnan(J)) = 0;
-        else
-             if OPTIONS.optional.verbose, fprintf('\n\t\t%3d clusters,\n\t\t%3d iter.\n\t\tEntropy drop:%4.1f\n',nclus,niter,entropy_drop); end
-        end
-        
-    end
-    R = J;
-    E = entropy_drop;
-    A = act_proba;
-    S = act_var;
-    
-end
-
-
-
-% =========================================================================
-
-function [R, E, A, S] = MEM_mainLoop2(ii,OPTIONS, obj, obj_const, isverbose)
+function [R, E, A, S] = MEM_mainLoop(ii,OPTIONS, obj, obj_const)
     obj.GreenM2  = obj_const.GreenM2;
     obj.gain     = obj_const.gain;
 
     if ~sum(obj.clusters)
-        if isverbose
+        if OPTIONS.optional.verbose
             disp(['MEM warning: The distributed dipoles could not be clusterized at sample ' num2str(ii) '. (null solution returned)']);
         end
         % Save empty solution
