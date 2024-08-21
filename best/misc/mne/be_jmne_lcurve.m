@@ -73,6 +73,8 @@ function [J,varargout] = be_jmne_lcurve(G,M,OPTIONS, sfig)
     scale   = trace(G*G')./ trace(inv(Sigma_s));       
     alpha   = param.*scale;
 
+    % Pre-compute data decomposition
+    [U,S]   = svd(M,'econ'); 
 
     Fit     = zeros(1,length(alpha));
     Prior   = zeros(1,length(alpha));
@@ -83,11 +85,17 @@ function [J,varargout] = be_jmne_lcurve(G,M,OPTIONS, sfig)
         
         inv_matrix = inv( GSG  + alpha(iAlpha) * Sigma_d );
         
+        % Define both Kernel
         residual_kernal = eye(size(M,1)) - GSG * inv_matrix;
-        wKernel = wSG*inv_matrix;
+        wKernel         = wSG*inv_matrix;
+        
+        % Estimate the corresponding norm
+        R = qr(residual_kernal*U);
+        Fit(iAlpha)     = norm(R*S);
 
-        Fit(iAlpha)     = normest(residual_kernal*M);  % Define Fit as a function of alpha
-        Prior(iAlpha)   = normest(wKernel*M);      % Define Prior as a function of alpha
+        R = qr(wKernel*U);
+        Prior(iAlpha)   = norm(R*S);
+        
         if ~OPTIONS.automatic.stand_alone
             bst_progress('inc', 1); 
         end
