@@ -92,7 +92,7 @@ if OPTIONS.solver.parallel_matlab == 1
     time_it_starts = tic;
     parfor ii = 1 : nbSmp
         
-        [R, E, A, S] = MEM_mainLoop(ii, obj_slice(ii),obj_const,OPTIONS_litle);
+        [R, E, A, S] = MEM_mainLoop(ii, obj_slice(ii), obj_const, OPTIONS_litle);
 
         entropy_drop(ii)        =  E;
         final_alpha{ii}         =  A;
@@ -117,7 +117,7 @@ else
     time_it_starts = tic;
     for ii = 1 : nbSmp
 
-        [R, E, A, S] = MEM_mainLoop(ii,obj_slice(ii),obj_const,OPTIONS_litle);
+        [R, E, A, S] = MEM_mainLoop(ii, obj_slice(ii), obj_const, OPTIONS_litle);
 
         entropy_drop(ii)	    = E;        
         final_alpha{ii}  	    = A;
