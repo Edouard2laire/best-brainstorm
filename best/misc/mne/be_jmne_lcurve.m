@@ -67,17 +67,17 @@ function [J,varargout] = be_jmne_lcurve(G,M,OPTIONS, sfig)
     wSG = sqrt(Sigma_s) * G';
 
     % Parameter for l-curve
-    param1  = [0.1:0.1:1 1:5:100 100:100:1000]; 
+    param  = logspace(-2,3,100);
 
     % Scale alpha using trace(G*G')./trace(W'*W)  
     scale   = trace(G*G')./ trace(inv(Sigma_s));       
-    alpha   = param1.*scale;
+    alpha   = param.*scale;
 
 
     Fit     = zeros(1,length(alpha));
     Prior   = zeros(1,length(alpha));
     if ~OPTIONS.automatic.stand_alone
-        bst_progress('start', 'wMNE, solving MNE by L-curve ... ' , 'Solving MNE by L-curve ... ', 1, length(param1));
+        bst_progress('start', 'wMNE, solving MNE by L-curve ... ' , 'Solving MNE by L-curve ... ', 1, length(alpha));
     end
     for iAlpha = 1:length(alpha)
         
