@@ -95,7 +95,8 @@ if OPTIONS.optional.verbose
 end        
         
 %% Useful variables
- obj = struct('hfig', [] , 'hfigtab', [],  'ImageGridAmp', []);
+obj = struct('ImageGridAmp', []);
+[obj.hfig, obj.hfigtab] = be_create_figure(OPTIONS);
 
 if ~isfield(HeadModel, 'vertex_connectivity')
     [OPTIONS, obj.VertConn] = be_vertex_connectivity(HeadModel, OPTIONS);
