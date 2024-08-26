@@ -190,6 +190,7 @@ mem.Hessian                          = H;
 mem.nb_sources                       = nb_sources;
 mem.nb_clusters                      = nb_clusters;
 mem.optim_algo                       = OPTIONS.solver.Optim_method;
+mem.optimoptions                     = OPTIONS.solver.optimoptions;
 
 % Lambda initialization
 switch OPTIONS.model.initial_lambda 
