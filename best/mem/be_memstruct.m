@@ -106,10 +106,6 @@ end
 % When there is no deph-weighting, then sigma_s is obj.GreenM2 * speye(size(G,2)
 Sigma_s = obj.Sigma_s;
 
-
-% Estimate the Hessian 
-H = obj.noise_var; 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % the following loop goes though each of the clusters (non null clusters)
 % and initializes the parameters of the model attached to each of them
@@ -169,7 +165,6 @@ for ii = 1:nb_clusters
         inactive_var{ii} = [];
     end
 
-    H = H + G_active_var_Gt{ii};
 end  
         
 
@@ -186,7 +181,6 @@ end
 mem.clusters                         = clusters_struct;
 mem.noise_var                        = obj.noise_var;
 mem.M                                = obj.data;
-mem.Hessian                          = H;
 mem.nb_sources                       = nb_sources;
 mem.nb_clusters                      = nb_clusters;
 mem.optim_algo                       = OPTIONS.solver.Optim_method;
