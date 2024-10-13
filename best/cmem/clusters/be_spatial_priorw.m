@@ -66,6 +66,6 @@ for i = 1:7
     A0 = rho/2*A0*A / (i+1);
 end
 W = W.*(W > exp(-8));
-W = W'*W; 
+%W = W'*W; 
 
 return
