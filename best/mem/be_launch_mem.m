@@ -65,15 +65,14 @@ final_sigma     = cell(1,nbSmp);
 
 
 % Pre-compute Sigma_s
-
+G = obj.gain;
 if OPTIONS.model.depth_weigth_MEM > 0 
-    p = OPTIONS.model.depth_weigth_MEM;
-    G = obj.gain;
 
-    obj.Sigma_s  = obj.GreenM2' * sparse(diag(power(diag(G'*G) ,-p)))* obj.GreenM2;
+    p = OPTIONS.model.depth_weigth_MEM;
+    obj.Sigma_s  = obj.GreenM2' * sparse(diag(power(diag(G'*G) ,-p))) * obj.GreenM2;
 else
-    G = obj.gain;
-    obj.Sigma_s  = obj.GreenM2 * speye(size(G,2));
+
+    obj.Sigma_s  = obj.GreenM2' * speye(size(G,2)) * obj.GreenM2; 
 end
 
 if ~OPTIONS.automatic.stand_alone
