@@ -69,10 +69,10 @@ G = obj.gain;
 if OPTIONS.model.depth_weigth_MEM > 0 
 
     p = OPTIONS.model.depth_weigth_MEM;
-    obj.Sigma_s  = obj.GreenM2' * sparse(diag(power(diag(G'*G) ,-p))) * obj.GreenM2;
+    obj.Sigma_s  = sparse(diag(power(diag(G'*G) ,-p))) ;
 else
 
-    obj.Sigma_s  = obj.GreenM2' * speye(size(G,2)) * obj.GreenM2; 
+    obj.Sigma_s  = speye(size(G,2)) ; 
 end
 
 if ~OPTIONS.automatic.stand_alone
