@@ -109,27 +109,8 @@ for ii = 1:nb_clusters
         active_mean{ii} = obj.active_mean(ii) * ones(length(idx_cluster),1);
     end
 
-    switch OPTIONS.model.active_mean_method
-        case 1  % Method 1
-            % the following function is in /misc
-            MNS = be_solve_wmn(obj.data+rand(size(obj.data))*10, obj.gain, speye(nb_sources) );
-            active_mean{ii} = mean( MNS(idx_cluster) );
-        case 2  % Method 2
-            active_mean{ii} = []; 
-        case 3  % Methode 3 (Minimum Norm regularized without null parcel)
-            active_mean{ii} = mean(cluster_G{ii}'*GpGptinv_M);
-        case 4
-            active_mean{ii} = mean( obj.Jmne(idx_cluster) );
-        otherwise
-            error('Wrong MU Method')
-    end
-
-    if ~isempty(active_mean{ii} )
-    end
-    
-    % SIGMA: spatial covariance along the cortical surface
-    active_var{ii}          =  obj.active_var(idx_cluster,idx_cluster)  ;
-    obj.G_active_var_Gt{ii} =  obj.G_active_var_Gt{ii};
+    % active_var: spatial covariance along the cortical surface
+    active_var{ii}              = obj.active_var(idx_cluster,idx_cluster)  ;
     active_var_out(idx_cluster) = diag( active_var{ii} );
     
     % SIGMA0: variance of the inactive state (not relevant for the present version)

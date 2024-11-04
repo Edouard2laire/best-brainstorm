@@ -16,7 +16,6 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
         obj_slice(i).time   = obj.time(:,i);
         obj_slice(i).scale  = obj.scale(:,i);
 
-
         clusters            = obj.CLS(:,i);
         nb_clusters         = max(obj.clusters);
         active_probability  = zeros(nb_clusters,1);
@@ -97,9 +96,7 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
 
     end
 
-    obj_const.nb_sources    = obj.nb_sources;
-    obj_const.nb_channels   = obj.nb_channels;
-    obj_const.nb_dipoles    = obj.nb_dipoles;
+
 
     % Smooth the coveriance matrix along the cortical surface
     if strcmp(OPTIONS.clustering.clusters_type, 'static')
@@ -148,7 +145,10 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
     end
     
 
-    obj_const.gain     = obj.gain;
+    obj_const.gain          = obj.gain;
+    obj_const.nb_sources    = obj.nb_sources;
+    obj_const.nb_channels   = obj.nb_channels;
+    obj_const.nb_dipoles    = obj.nb_dipoles;
 
     OPTIONS.automatic   = rmfield(OPTIONS.automatic,'Modality');
     OPTIONS             = rmfield(OPTIONS,'mandatory');
