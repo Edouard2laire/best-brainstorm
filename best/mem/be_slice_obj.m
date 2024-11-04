@@ -17,7 +17,7 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
         obj_slice(i).scale  = obj.scale(:,i);
 
         clusters            = obj.CLS(:,i);
-        nb_clusters         = max(obj.clusters);
+        nb_clusters         = max(clusters);
         active_probability  = zeros(nb_clusters,1);
 
         for ii = 1:nb_clusters
@@ -128,7 +128,7 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
             energy  = OPTIONS.solver.active_var_mult * mean(Jmne(idx_cluster,:).^2);
 
             for i = 1:nbSmp
-                obj_slice(i).active_var(idx_cluster,idx_cluster) = energy(i) * Sigma_s(idx_cluster,idx_cluster);
+                obj_slice(i).active_var{ii} = energy(i) * Sigma_s(idx_cluster,idx_cluster);
                 obj_slice(i).G_active_var_Gt{ii} = energy(i) *G_active_var_Gt{ii};
             end
         end

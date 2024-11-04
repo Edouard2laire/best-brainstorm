@@ -88,7 +88,6 @@ cluster_G   = cell(1,nb_clusters);
 cID         = cell(1,nb_clusters);
 active_mean = cell(1,nb_clusters);
 inactive_var= cell(1,nb_clusters);
-active_var  = cell(1,nb_clusters);
 active_var_out = zeros(obj.nb_sources,1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -109,9 +108,7 @@ for ii = 1:nb_clusters
         active_mean{ii} = obj.active_mean(ii) * ones(length(idx_cluster),1);
     end
 
-    % active_var: spatial covariance along the cortical surface
-    active_var{ii}              = obj.active_var(idx_cluster,idx_cluster)  ;
-    active_var_out(idx_cluster) = diag( active_var{ii} );
+    active_var_out(idx_cluster) = diag( obj.active_var{ii} );
     
     % SIGMA0: variance of the inactive state (not relevant for the present version)
     if OPTIONS.solver.inactive_var_mult ~= 0 
@@ -127,7 +124,7 @@ end
 [clusters_struct.G]                  = cluster_G{:};
 [clusters_struct.active_probability] = proba{:};
 [clusters_struct.active_mean]        = active_mean{:};
-[clusters_struct.active_var]         = active_var{:};
+[clusters_struct.active_var]         = obj.active_var{:};
 [clusters_struct.inactive_var]       = inactive_var{:};  
 [clusters_struct.G_active_var_Gt]    = obj.G_active_var_Gt{:};  
 [clusters_struct.indices]            = cID{:};
