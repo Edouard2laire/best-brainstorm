@@ -1,18 +1,69 @@
 function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
 
-    nbSmp               = size(Data,2); 
+    nbSmp       = size(Data,2); 
+    nb_sensors  = size(Data,1); 
+
     obj_slice(nbSmp)    = struct();
 
+    % Normalize MNE at each time-point
+    Jmne = OPTIONS.automatic.Modality(1).Jmne;
+    Jmne = Jmne ./ max(abs(Jmne));
+
+
     for i = 1:nbSmp
-
-        obj_slice(i).active_probability = obj.ALPHA(:,i);
-
+        
         obj_slice(i).data   = Data(:,i);
         obj_slice(i).time   = obj.time(:,i);
         obj_slice(i).scale  = obj.scale(:,i);
 
-        obj_slice(i).Jmne   = OPTIONS.automatic.Modality(1).Jmne(:,i) ;
-        obj_slice(i).Jmne   = obj_slice(i).Jmne ./ max(abs(obj_slice(i).Jmne));
+
+        clusters            = obj.CLS(:,i);
+        nb_clusters         = max(obj.clusters);
+        active_probability  = zeros(nb_clusters,1);
+
+        for ii = 1:nb_clusters
+            idx_cluster  = find(clusters == ii);
+            active_probability(ii) = obj.ALPHA(idx_cluster(1),i);
+        end
+
+        obj_slice(i).active_probability = active_probability;
+        
+        % estimate active mean
+        % Method 1: initialization FROM the null hypothesis (alpha=1, mu=0)
+        % Method 2: Method used by Christophe
+        % Method 3: initialization from the null hypothesis (witout null parcels)
+        % Method 4: initialization from the MNE with l-curve
+
+        active_mean = [];
+        % Preliminar computation (used in the minimum norm solution)
+        if OPTIONS.model.active_mean_method == 3
+            GpGpt = obj.gain(:,clusters~=0)*obj.gain(:,clusters~=0)';
+            regul = trace(GpGpt)/sum(clusters~=0);
+            [U,S,V] = svd(GpGpt + regul*eye(nb_sensors));
+            eigen = diag(S);
+            I = find(cumsum(eigen.^2)./ sum(eigen.^2) > 0.9,1,'first');
+            GpGptinv_M = V(:,1:I) * diag(1./eigen(1:I)) * U(:,1:I)' * Data(:,i);
+        end
+
+        if OPTIONS.model.active_mean_method ~= 2 % active mean == 0
+            active_mean = zeros(nb_clusters,1);
+            for ii = 1:nb_clusters
+                idx_cluster     = find(obj.clusters == ii);
+                switch OPTIONS.model.active_mean_method
+                    case 1  % Method 1
+                        % the following function is in /misc
+                        MNS = be_solve_wmn(Data(:,i)+rand(size(Data(:,i)))*10, obj.gain, speye(nb_sources) );
+                        active_mean(ii) = mean( MNS(idx_cluster) );
+                    case 3  % Methode 3 (Minimum Norm regularized without null parcel)
+                        active_mean(ii) = mean( obj.gain(:,idx_cluster)'*GpGptinv_M);
+                    case 4
+                        active_mean(ii) = mean( Jmne(idx_cluster,i));
+                    otherwise
+                        error('Wrong MU Method')
+                end
+             end
+        end
+        obj_slice(i).active_mean = active_mean;
 
         % check if there's a noise cov for each scale
         if (size(obj.noise_var,3) > 1) && OPTIONS.optional.baseline_shuffle ~= 1
@@ -53,16 +104,50 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
     % Smooth the coveriance matrix along the cortical surface
     if strcmp(OPTIONS.clustering.clusters_type, 'static')
         obj_const.clusters = obj.CLS(:,1);
-        [obj_const.Sigma_s,obj_const.G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_const.clusters,  obj.GreenM2);
-    else
+        if isfield(OPTIONS.optional.clustering, 'initial_sigma')
+            [Sigma_s, G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, OPTIONS.optional.clustering.initial_sigma, obj_const.clusters,  obj.GreenM2);
+        else
+            [Sigma_s, G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_const.clusters,  obj.GreenM2);
+        end
 
+    else
         for i = 1:nbSmp
             obj_slice(i).clusters = obj.CLS(:,i);
-            [obj_slice(i).Sigma_s, obj_slice(i).G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_slice(i).clusters,  obj.GreenM2);
+            if isfield(OPTIONS.optional.clustering, 'initial_sigma')
+                [obj_slice(i).active_var, obj_slice(i).G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, OPTIONS.optional.clustering.initial_sigma, obj_slice(i).clusters,  obj.GreenM2);
+            else
+                [obj_slice(i).active_var, obj_slice(i).G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_slice(i).clusters,  obj.GreenM2);
+            end
         end
     end
 
-    obj_const.GreenM2  = obj.GreenM2;
+
+    % Estimate the active variance 
+    % Multiply Signa_s by 5% of the MNE solution
+    if strcmp(OPTIONS.clustering.clusters_type, 'static')
+        clusters = obj.CLS(:,1);
+        for ii = 1:max(clusters)
+            idx_cluster     = find(clusters == ii);
+            energy  = OPTIONS.solver.active_var_mult * mean(Jmne(idx_cluster,:).^2);
+
+            for i = 1:nbSmp
+                obj_slice(i).active_var(idx_cluster,idx_cluster) = energy(i) * Sigma_s(idx_cluster,idx_cluster);
+                obj_slice(i).G_active_var_Gt{ii} = energy(i) *G_active_var_Gt{ii};
+            end
+        end
+    else
+        for i = 1:nbSmp
+            clusters = obj.CLS(:,i);
+            for ii = 1:max(clusters)
+                idx_cluster = find(clusters == ii);
+                energy = OPTIONS.solver.active_var_mult * mean(Jmne(idx_cluster,i).^2);        
+                obj_slice(i).active_var(idx_cluster,idx_cluster) = energy * obj_slice(i).active_var(idx_cluster,idx_cluster);
+                obj_slice(i).G_active_var_Gt{ii} = energy * obj_slice(i).G_active_var_Gt{ii};
+            end
+        end
+    end
+    
+
     obj_const.gain     = obj.gain;
 
     OPTIONS.automatic   = rmfield(OPTIONS.automatic,'Modality');

@@ -86,28 +86,18 @@ nb_sensors  = obj.nb_channels;
 clusters_struct(nb_clusters) = struct;
 cluster_G   = cell(1,nb_clusters);
 cID         = cell(1,nb_clusters);
-proba       = cell(1,nb_clusters);
 active_mean = cell(1,nb_clusters);
 inactive_var= cell(1,nb_clusters);
 active_var  = cell(1,nb_clusters);
 active_var_out = zeros(obj.nb_sources,1);
 
-% Preliminar computation (used in the minimum norm solution)
-if OPTIONS.model.active_mean_method == 3
-    GpGpt = obj.gain(:,obj.clusters~=0)*obj.gain(:,obj.clusters~=0)';
-    regul = trace(GpGpt)/sum(obj.clusters~=0);
-    [U,S,V] = svd(GpGpt + regul*eye(nb_sensors));
-    eigen = diag(S);
-    I = find(cumsum(eigen.^2)./ sum(eigen.^2) > 0.9,1,'first');
-    GpGptinv_M = V(:,1:I) * diag(1./eigen(1:I)) * U(:,1:I)' * obj.data;
-end
-
-% When there is no deph-weighting, then sigma_s is obj.GreenM2 * speye(size(G,2)
-Sigma_s = obj.Sigma_s;
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % the following loop goes though each of the clusters (non null clusters)
 % and initializes the parameters of the model attached to each of them
+
+% ALPHA: activation probability (alpha's) 
+proba = num2cell(obj.active_probability);
+
 for ii = 1:nb_clusters
 
     % CLUSTER: Extraction of the parcel-wise lead field and index of sources
@@ -115,15 +105,10 @@ for ii = 1:nb_clusters
     cluster_G{ii}   = obj.gain(:,idx_cluster);
     cID{ii}         = idx_cluster;
 
-    % ALPHA: activation probability (alpha's) 
-    prb = obj.active_probability(idx_cluster);
-    proba{ii}=prb(1);
+    if ~isempty(obj.active_mean)
+        active_mean{ii} = obj.active_mean(ii) * ones(length(idx_cluster),1);
+    end
 
-    % MU (different options are proposed)
-    % Method 1: initialization FROM the null hypothesis (alpha=1, mu=0)
-    % Method 2: Method used by Christophe
-    % Method 3: initialization from the null hypothesis (witout null
-    % parcels)
     switch OPTIONS.model.active_mean_method
         case 1  % Method 1
             % the following function is in /misc
@@ -140,23 +125,11 @@ for ii = 1:nb_clusters
     end
 
     if ~isempty(active_mean{ii} )
-        active_mean{ii} = active_mean{ii} * ones(length(idx_cluster),1);
     end
     
-    % SIGMA: spatial smoothing (different options are proposed)
-    % OPTIONS.spatial_smoothing = 1 : we use the Green matrix to install
-    % some spatial correlations on the parcel. Otherwise, it is just
-    % diagonal. Always multiplied with the mean activation (and a
-    % percentage)   
-    if isfield(OPTIONS.optional.clustering, 'initial_sigma')
-        factor          = 1;
-        active_var{ii}  = factor * diag( OPTIONS.optional.clustering.initial_sigma(idx_cluster) );     
-    else      
-        factor          =  OPTIONS.solver.active_var_mult * mean(obj.Jmne(idx_cluster).^2);
-        active_var{ii}  =  factor * Sigma_s(idx_cluster,idx_cluster)  ;
-    end
-    
-    obj.G_active_var_Gt{ii} =  factor * obj.G_active_var_Gt{ii};
+    % SIGMA: spatial covariance along the cortical surface
+    active_var{ii}          =  obj.active_var(idx_cluster,idx_cluster)  ;
+    obj.G_active_var_Gt{ii} =  obj.G_active_var_Gt{ii};
     active_var_out(idx_cluster) = diag( active_var{ii} );
     
     % SIGMA0: variance of the inactive state (not relevant for the present version)
