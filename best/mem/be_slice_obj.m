@@ -102,9 +102,9 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
     if strcmp(OPTIONS.clustering.clusters_type, 'static')
         obj_const.clusters = obj.CLS(:,1);
         if isfield(OPTIONS.optional.clustering, 'initial_sigma')
-            [Sigma_s, G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, OPTIONS.optional.clustering.initial_sigma, obj_const.clusters,  obj.GreenM2);
+            [ obj_const.active_var,  obj_const.G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, OPTIONS.optional.clustering.initial_sigma, obj_const.clusters,  obj.GreenM2);
         else
-            [Sigma_s, G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_const.clusters,  obj.GreenM2);
+            [ obj_const.active_var,  obj_const.G_active_var_Gt]   = be_smooth_sigma_s(obj.gain, obj.Sigma_s, obj_const.clusters,  obj.GreenM2);
         end
 
     else
@@ -123,24 +123,22 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
     % Multiply Signa_s by 5% of the MNE solution
     if strcmp(OPTIONS.clustering.clusters_type, 'static')
         clusters = obj.CLS(:,1);
+        energy = zeros(max(clusters),nbSmp);
         for ii = 1:max(clusters)
-            idx_cluster     = find(clusters == ii);
-            energy  = OPTIONS.solver.active_var_mult * mean(Jmne(idx_cluster,:).^2);
+            energy(ii,:)  = OPTIONS.solver.active_var_mult * mean(Jmne(clusters == ii,:).^2);
+        end
 
-            for i = 1:nbSmp
-                obj_slice(i).active_var{ii} = energy(i) * Sigma_s(idx_cluster,idx_cluster);
-                obj_slice(i).G_active_var_Gt{ii} = energy(i) *G_active_var_Gt{ii};
-            end
+        for i = 1:nbSmp
+            obj_slice(i).mne_energy = energy(:,i);            
         end
     else
         for i = 1:nbSmp
             clusters = obj.CLS(:,i);
+            energy = zeros(max(clusters),1);
             for ii = 1:max(clusters)
-                idx_cluster = find(clusters == ii);
-                energy = OPTIONS.solver.active_var_mult * mean(Jmne(idx_cluster,i).^2);        
-                obj_slice(i).active_var(idx_cluster,idx_cluster) = energy * obj_slice(i).active_var(idx_cluster,idx_cluster);
-                obj_slice(i).G_active_var_Gt{ii} = energy * obj_slice(i).G_active_var_Gt{ii};
+                energy(ii) = OPTIONS.solver.active_var_mult * mean(Jmne(clusters == ii,i).^2);        
             end
+            obj_slice(i).mne_energy = energy;
         end
     end
     

@@ -108,6 +108,9 @@ for ii = 1:nb_clusters
         active_mean{ii} = obj.active_mean(ii) * ones(length(idx_cluster),1);
     end
 
+    % Multiply the active variance by the MNE energy
+    obj.active_var{ii} = obj.active_var{ii}     * obj.mne_energy(ii);
+    obj.G_active_var_Gt{ii}     = obj.G_active_var_Gt{ii} * obj.mne_energy(ii);
     active_var_out(idx_cluster) = diag( obj.active_var{ii} );
     
     % SIGMA0: variance of the inactive state (not relevant for the present version)
