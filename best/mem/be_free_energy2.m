@@ -1,4 +1,4 @@
-function [D, dD,H] = be_free_energy2(lambda, M, noise_var,G_active_var_Gt, clusters,  varargin)
+function [D, dD,H] = be_free_energy2(lambda, M, noise_var, G_active_var_Gt, clusters)
 %CALCULATE_FREE_ENERGY gives the free energy of a system
 %   [D, dD] = CALCULATE_FREE_ENERGY(LAMBDA, M, NOISE_VAR, CLUSTERS,
 %   NB_CLUSTERS)
@@ -45,14 +45,14 @@ function [D, dD,H] = be_free_energy2(lambda, M, noise_var,G_active_var_Gt, clust
 % -------------------------------------------------------------------------
 
 lambda_trans = lambda';      
-isUsingActiveMean = ~isempty(clusters(1).active_mean);
+isUsingActiveMean  = ~isempty(clusters(1).active_mean);
 isUsingInactiveVar = ~isempty(clusters(1).inactive_var);
 
 
 % Estimate dF1 and F1 (separating the contribution  of the mean and
 % covariance for optimization purpose)
 dF1     = squeeze(pagemtimes(G_active_var_Gt,lambda));
-F1    =  1/2 * lambda_trans*dF1as; 
+F1      =  1/2 * lambda_trans*dF1as; 
 
 if isUsingActiveMean
 
@@ -68,22 +68,42 @@ if isUsingActiveMean
 
 end
 
-% Estimate F0
+% Estimate dF0 and F0
 % F0 is set to a dirac by default (omega=0).
-    if isempty(omega)
-        F0=0;
-    else
-        F0 = 1/2 * xi' * omega * xi;
+if isUsingInactiveVar
+    dF0 = zeros(size(dF1as));
+    F0 = zeros(size(F1));
+    for ii = 1:size(dF1b,2)
+        xi = clusters(ii).G' * lambda;
+        dF0(:,ii) = clusters(ii).G * clusters(ii).inactive_var * xi;
+        F0(ii) = 1/2 * xi' * clusters(ii).inactive_var * xi;
     end
+end
 
-p                   = [clusters.active_probability];
-coeffs_free_energy  = (1-p) .* exp(-F1)  +  p;
+p = [clusters.active_probability];
 
-F1 = sum(F1 + log(coeffs_free_energy));
+if ~isUsingActiveMean && ~isUsingInactiveVar
 
-s   = p ./ coeffs_free_energy;
-dF  = s .* dF1;
+    coeffs_free_energy  = (1-p) .* exp(-F1)  +  p;
+    
+    F1 = sum(F1 + log(coeffs_free_energy));
 
+    s   = p ./ coeffs_free_energy;
+    dF  = s .* dF1;
+else % todo: check validity
+    if  ~isUsingInactiveVar
+        dF0 = zeros(size(dF1as));
+        F0 = zeros(size(F1));
+    end
+    
+    F_max = max(F0,F1);
+    
+    free_energy = exp([F0;F1] - F_max);
+    coeffs_free_energy = (1-p) .*free_energy(1,:) +  p(2,:) .*  free_energy(2,:);
+    
+    F1 = sum(F_max + log(coeffs_free_energy));
+    dF = [ (1 - active_probability)*dF0,  active_probability*dF1] * free_energy ./ coeffs_free_energy;
+end
 
 dD  =                M - sum(dF,2) - noise_var * lambda;
 D   = lambda_trans * M - sum(F1) - (1/2) * lambda_trans * noise_var * lambda;
@@ -92,11 +112,5 @@ D   = lambda_trans * M - sum(F1) - (1/2) * lambda_trans * noise_var * lambda;
 % (with a maximum).
 D   = -D;
 dD  = -dD;
-
-if nargout >=3
-    disp('using hessian')
-    H = sum(G_active_var_Gt,3) + noise_var;
-end
-
 
 end
