@@ -1,4 +1,4 @@
-function [D, dD,H] = be_free_energy2(lambda, M, noise_var, G_active_var_Gt, clusters)
+function [D, dD] = be_free_energy2(lambda, M, noise_var, G_active_var_Gt, clusters)
 %CALCULATE_FREE_ENERGY gives the free energy of a system
 %   [D, dD] = CALCULATE_FREE_ENERGY(LAMBDA, M, NOISE_VAR, CLUSTERS,
 %   NB_CLUSTERS)
@@ -72,7 +72,7 @@ end
 % F0 is set to a dirac by default (omega=0).
 if isUsingInactiveVar
     dF0 = zeros(size(dF1as));
-    F0 = zeros(size(F1));
+    F0  = zeros(size(F1));
     for ii = 1:size(dF1b,2)
         xi = clusters(ii).G' * lambda;
         dF0(:,ii) = clusters(ii).G * clusters(ii).inactive_var * xi;
@@ -82,6 +82,9 @@ end
 
 p = [clusters.active_probability];
 
+% Finally estimate dF and F
+% We separate the case where mu_k = 0 and Dirac for inactive parcel for
+% optimization purpose
 if ~isUsingActiveMean && ~isUsingInactiveVar
 
     coeffs_free_energy  = (1-p) .* exp(-F1)  +  p;
@@ -104,12 +107,9 @@ else % todo: check validity
     dF = [ (1 - p).*dF0,  p.*dF1] * free_energy ./ coeffs_free_energy;
 end
 
-dD  =                M - sum(dF,2)                      - noise_var * lambda;
-D   = lambda_trans * M - sum(F) - (1/2) * lambda_trans * noise_var * lambda;
-
 % The outcome of the equations produces a strictly convex function
 % (with a maximum).
-D   = -D;
-dD  = -dD;
+dD  = -(               M - sum(dF,2)                     - noise_var * lambda);
+D   = -(lambda_trans * M - sum(F) - (1/2) * lambda_trans * noise_var * lambda);
 
 end
