@@ -47,7 +47,7 @@ function [OPTIONS, obj_slice, obj_const] = be_slice_obj(Data, obj, OPTIONS)
         if OPTIONS.model.active_mean_method ~= 2 % active mean == 0
             active_mean = zeros(nb_clusters,1);
             for ii = 1:nb_clusters
-                idx_cluster     = find(obj.clusters == ii);
+                idx_cluster     = find(clusters == ii);
                 switch OPTIONS.model.active_mean_method
                     case 1  % Method 1
                         % the following function is in /misc

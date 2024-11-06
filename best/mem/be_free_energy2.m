@@ -45,22 +45,48 @@ function [D, dD,H] = be_free_energy2(lambda, M, noise_var,G_active_var_Gt, clust
 % -------------------------------------------------------------------------
 
 lambda_trans = lambda';      
+isUsingActiveMean = ~isempty(clusters(1).active_mean);
+isUsingInactiveVar = ~isempty(clusters(1).inactive_var);
 
-% Perform the matrix multiplication
-dF1as   = squeeze(pagemtimes(G_active_var_Gt,lambda));
-F1as    =  1/2 * lambda_trans*dF1as; 
+
+% Estimate dF1 and F1 (separating the contribution  of the mean and
+% covariance for optimization purpose)
+dF1     = squeeze(pagemtimes(G_active_var_Gt,lambda));
+F1    =  1/2 * lambda_trans*dF1as; 
+
+if isUsingActiveMean
+
+    dF1b = zeros(size(dF1as));
+    for ii = 1:size(dF1b,2)
+
+        active_mean = clusters(ii).active_mean;
+        dF1b(:,ii)  = clusters(ii).G * active_mean;
+
+    end
+    dF1 = dF1 + dF1b;
+    F1  = F1 + lambda_trans * dF1b;
+
+end
+
+% Estimate F0
+% F0 is set to a dirac by default (omega=0).
+    if isempty(omega)
+        F0=0;
+    else
+        F0 = 1/2 * xi' * omega * xi;
+    end
 
 p                   = [clusters.active_probability];
-coeffs_free_energy  = (1-p) .* exp(-F1as)  +  p;
+coeffs_free_energy  = (1-p) .* exp(-F1)  +  p;
 
-F1as = sum(F1as + log(coeffs_free_energy));
+F1 = sum(F1 + log(coeffs_free_energy));
 
 s   = p ./ coeffs_free_energy;
-dF  = s .* dF1as;
+dF  = s .* dF1;
 
 
 dD  =                M - sum(dF,2) - noise_var * lambda;
-D   = lambda_trans * M - sum(F1as) - (1/2) * lambda_trans * noise_var * lambda;
+D   = lambda_trans * M - sum(F1) - (1/2) * lambda_trans * noise_var * lambda;
 
 % The outcome of the equations produces a strictly convex function
 % (with a maximum).
