@@ -56,7 +56,7 @@ F1      =  1/2 * lambda_trans*dF1;
 
 if isUsingActiveMean
 
-    dF1b = zeros(size(dF1as));
+    dF1b = zeros(size(dF1));
     for ii = 1:size(dF1b,2)
 
         active_mean = clusters(ii).active_mean;
@@ -88,23 +88,27 @@ p = [clusters.active_probability];
 if ~isUsingActiveMean && ~isUsingInactiveVar
 
     coeffs_free_energy  = (1-p) .* exp(-F1)  +  p;
-    s   = p ./ coeffs_free_energy;
+    s1   = p ./ coeffs_free_energy;
 
     F = F1 + log(coeffs_free_energy);
-    dF  = s .* dF1;
-else % todo: check validity
+    dF  = s1 .* dF1;
+else 
     if  ~isUsingInactiveVar
-        dF0 = zeros(size(dF1as));
+        dF0 = zeros(size(dF1));
         F0  = zeros(size(F1));
     end
     
     F_max = max(F0,F1);
     
     free_energy = exp([F0;F1] - F_max);
-    coeffs_free_energy = (1-p) .*free_energy(1,:) +  p(2,:) .*  free_energy(2,:);
+    coeffs_free_energy = (1-p) .* free_energy(1,:) +  p .*  free_energy(2,:);
     
     F = F_max + log(coeffs_free_energy);
-    dF = [ (1 - p).*dF0,  p.*dF1] * free_energy ./ coeffs_free_energy;
+
+    s0   = (1-p) ./ coeffs_free_energy ;
+    s1   =    p  ./ coeffs_free_energy ;
+
+    dF = s0 .* dF0 +  s1.* dF1;
 end
 
 % The outcome of the equations produces a strictly convex function
