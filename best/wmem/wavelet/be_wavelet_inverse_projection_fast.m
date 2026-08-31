@@ -11,7 +11,10 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
     % Pre-compute one wavelet per scale
     [unique_scales, mother_wavelet, required_space] = prepare_wavelet(nbSmpTime, OPTIONS);
 
-    inv_proj = spalloc(nbSmp, nbSmpTime, required_space);
+
+    all_rows = [];
+    all_cols = [];
+    all_vals = [];
 
 
     for iScale = 1:length(unique_scales)
@@ -31,12 +34,19 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
         
         % Vectorized: compute new columns (broadcasts to [num_boxes, num_nz])
         new_cols = mod(nz_cols - shift_amounts - 1, nbSmpTime) + 1;
-        rows = repelem((1:size(new_cols,1))', 1, size(new_cols,2));
-        inv_proj(sub2ind(size(inv_proj), rows(:), new_cols(:))) = repmat(nz_vals, size(new_cols,1), 1);
 
+        % Accumulate indices and values
+        row_idx = repelem(iBoxes(:), 1, length(nz_vals));
+        col_idx = new_cols(:);
+        val_idx = repmat(nz_vals, length(iBoxes), 1);
+        
+        all_rows = [all_rows; row_idx(:)];
+        all_cols = [all_cols; col_idx];
+        all_vals = [all_vals; val_idx(:)];
     end
 
-    inv_proj    =   inv_proj(:,obj.info_extension.start:obj.info_extension.end);
+    inv_proj    = sparse(all_rows, all_cols, all_vals , nbSmp, nbSmpTime);
+    inv_proj    = inv_proj(:,obj.info_extension.start:obj.info_extension.end);
 end
 
 
