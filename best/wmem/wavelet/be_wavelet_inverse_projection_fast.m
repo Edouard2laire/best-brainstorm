@@ -20,11 +20,20 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
         transls         = all_transls(iBoxes);
         inv_wavelet     = mother_wavelet(iScale, :);
             
-        shiffting    = 2.^scales(1);
-        shiftAmounts = mod(shiffting * (transls(1) - transls(:)), nbSmpTime);
+        shifting    = 2.^scales(1);
+        % Extract non-zero elements from the sparse wavelet
+        [nz_row, nz_cols, nz_vals] = find(inv_wavelet);  % Find non-zero positions and values
         
-        indices = mod(bsxfun(@plus, (1:nbSmpTime)-1, shiftAmounts), nbSmpTime) + 1;
-        inv_proj(iBoxes, :) = inv_wavelet(indices);
+        % Calculate shift amounts for ALL boxes at once
+        shift_amounts = shifting * (transls(1) - transls(:));  % [num_boxes, 1]
+        
+        % Vectorized: compute new columns (broadcasts to [num_boxes, num_nz])
+        new_cols = mod(nz_cols - shift_amounts - 1, nbSmpTime) + 1;
+
+        for iBox = 1:size(new_cols,1)
+            inv_proj(iBoxes(iBox), new_cols(iBox, :)) = nz_vals;
+        end
+
     end
 
     inv_proj    =   inv_proj(:,obj.info_extension.start:obj.info_extension.end);
@@ -49,7 +58,7 @@ function [unique_scales, mother_wavelet, required_space] = prepare_wavelet(nbSmp
     x = 1:length(unique_scales);
     y = nbSmpTime ./ (2.^all_scales(iBoxesRef)) + all_transls(iBoxesRef);
     wav = sparse(x, y, 1, length(unique_scales), nbSmpTime);
-    mother_wavelet    =   be_wavelet_inverse( wav, OPTIONS );
+    mother_wavelet    =   be_wavelet_inverse(wav, OPTIONS );
 
     required_space = 0;
     for iScale = 1:length(unique_scales)
