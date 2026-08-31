@@ -9,7 +9,7 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
     all_transls = OPTIONS.automatic.selected_samples(3, :);
 
     % Pre-compute one wavelet per scale
-    [unique_scales, mother_wavelet, required_space] = prepare_wavelet(nbSmpTime, OPTIONS);
+    [unique_scales, mother_wavelet] = prepare_wavelet(nbSmpTime, OPTIONS);
 
 
     all_rows = [];
@@ -26,6 +26,7 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
         inv_wavelet     = mother_wavelet(iScale, :);
             
         shifting    = 2.^scales(1);
+        
         % Extract non-zero elements from the sparse wavelet
         [nz_row, nz_cols, nz_vals] = find(inv_wavelet);  % Find non-zero positions and values
         
@@ -50,29 +51,19 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
 end
 
 
-function [unique_scales, mother_wavelet, required_space] = prepare_wavelet(nbSmpTime, OPTIONS)
+function [unique_scales, mother_wavelet] = prepare_wavelet(nbSmpTime, OPTIONS)
     
     all_scales  = OPTIONS.automatic.selected_samples(2, :);
     all_transls = OPTIONS.automatic.selected_samples(3, :);
 
-    unique_scales = unique(all_scales);
-    
+    unique_scales = unique(all_scales);    
     iBoxesRef = zeros(1, length(unique_scales));
-    nBoxes    = zeros(1, length(unique_scales));
     for iScale = 1:length(unique_scales)
-        tmp = find(all_scales == unique_scales(iScale));
-        iBoxesRef(iScale) = tmp(1);
-        nBoxes(iScale)    = length(tmp);
+        iBoxesRef(iScale) = find(all_scales == unique_scales(iScale), 1);
     end
     
     x = 1:length(unique_scales);
     y = nbSmpTime ./ (2.^all_scales(iBoxesRef)) + all_transls(iBoxesRef);
     wav = sparse(x, y, 1, length(unique_scales), nbSmpTime);
     mother_wavelet    =   be_wavelet_inverse(wav, OPTIONS );
-
-    required_space = 0;
-    for iScale = 1:length(unique_scales)
-        required_space = required_space + nnz(mother_wavelet(iScale, :)) * nBoxes(iScale);
-    end
-
 end
