@@ -11,18 +11,23 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
     unique_scales = unique(all_scales);
     inv_proj = sparse(nbSmp, nbSmpTime);
 
+    iBoxesRef = zeros(1, length(unique_scales));
+    for iScale = 1:length(unique_scales)
+        iBoxesRef(iScale) = find(all_scales == unique_scales(iScale), 1);
+    end
+    
+    x = 1:length(unique_scales);
+    y = nbSmpTime ./ (2.^all_scales(iBoxesRef)) + all_transls(iBoxesRef);
+    wav = sparse(x, y, 1, length(unique_scales), nbSmpTime);
+    mother_wavelet    =   be_wavelet_inverse( wav, OPTIONS );
+
     for iScale = 1:length(unique_scales)
         
         iBoxes = find(all_scales == unique_scales(iScale));
 
-        scales = all_scales(iBoxes);
-        transls = all_transls(iBoxes);
-
-
-        x = 1;
-        y = nbSmpTime ./ (2.^scales(1)) + transls(1);
-        wav = sparse(x, y, 1, 1, nbSmpTime);
-        inv_wavelet    =   be_wavelet_inverse( wav, OPTIONS );
+        scales          = all_scales(iBoxes);
+        transls         = all_transls(iBoxes);
+        inv_wavelet     = mother_wavelet(iScale, :);
 
             
         nCols = size(inv_wavelet, 2);
@@ -32,6 +37,7 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
         indices = mod(bsxfun(@plus, (1:nCols)-1, shiftAmounts), nCols) + 1;
         inv_proj(iBoxes, :) = inv_wavelet(indices);
     end
+
     inv_proj    =   inv_proj(:,obj.info_extension.start:obj.info_extension.end);
 
 end
