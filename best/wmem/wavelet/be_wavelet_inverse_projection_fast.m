@@ -12,6 +12,8 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
     [unique_scales, mother_wavelet, required_space] = prepare_wavelet(nbSmpTime, OPTIONS);
 
     inv_proj = spalloc(nbSmp, nbSmpTime, required_space);
+
+
     for iScale = 1:length(unique_scales)
         
         iBoxes = find(all_scales == unique_scales(iScale));
@@ -29,10 +31,8 @@ function inv_proj = be_wavelet_inverse_projection_fast(obj,OPTIONS)
         
         % Vectorized: compute new columns (broadcasts to [num_boxes, num_nz])
         new_cols = mod(nz_cols - shift_amounts - 1, nbSmpTime) + 1;
-
-        for iBox = 1:size(new_cols,1)
-            inv_proj(iBoxes(iBox), new_cols(iBox, :)) = nz_vals;
-        end
+        rows = repelem((1:size(new_cols,1))', 1, size(new_cols,2));
+        inv_proj(sub2ind(size(inv_proj), rows(:), new_cols(:))) = repmat(nz_vals, size(new_cols,1), 1);
 
     end
 
