@@ -39,9 +39,9 @@ function [OPTIONS, obj] = be_main_alpha(obj, OPTIONS)
     %% ===== User-provided alpha   ===== %%
     if isfield(OPTIONS.optional.clustering, 'initial_alpha')
         if strcmp( OPTIONS.mandatory.pipeline, 'wMEM' )
-            ALPHA = OPTIONS.optional.clustering.initial_alpha * ones(1,size(OPTIONS.automatic.Modality(1).selected_jk, 2));
+            ALPHA = OPTIONS.optional.clustering.initial_alpha * ones(1, size(OPTIONS.automatic.Modality(1).selected_jk, 2));
         else
-            ALPHA = OPTIONS.optional.clustering.initial_alpha * ones(1,size(OPTIONS.automatic.Modality(1).data, 2));
+            ALPHA = OPTIONS.optional.clustering.initial_alpha * ones(1, size(OPTIONS.automatic.Modality(1).data, 2));
         end
     
         obj.ALPHA = ALPHA;
@@ -64,9 +64,3 @@ function [OPTIONS, obj] = be_main_alpha(obj, OPTIONS)
     obj.CLS   = CLS;
     obj.ALPHA = ALPHA;
 end
-
-
-
-
-
- 
