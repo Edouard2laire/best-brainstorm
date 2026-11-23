@@ -29,12 +29,12 @@ function Labels = be_wavelet_box_labels(obj, WData, SData, OPTIONS)
 %           .power  : mean power over sensors of the coefficient
 %           .win_l  : left  edge of the box, in true (non-extended) samples
 %           .win_r  : right edge of the box, in true (non-extended) samples
-%           .edge_dist : number of whole boxes between this box and the
-%                     nearest end of the TRUE data (not the zero-padded
-%                     extension). 0 = box starts/ends exactly at the data
-%                     edge; negative = box starts before the data start or
-%                     ends after the data end (e.g. in the padding).
-%                     Use it to discard edge effects, e.g. edge_dist >= 2
+%           .edge_dist : number of boxes between this box and the nearest
+%                     border of the EXTENDED data, within its own scale
+%                     (0 = outermost box). Padding is NOT treated as edge:
+%                     it is measured from the extended array, not from the
+%                     true signal. Use it to discard edge effects, e.g.
+%                     edge_dist >= 2
 %
 %           .is_approx : true for the approximation (coarsest) coefficients.
 %                     They have the same support (2^nbl samples) as the
@@ -121,10 +121,9 @@ function Labels = be_wavelet_box_labels(obj, WData, SData, OPTIONS)
     win_l = max(box_l, ext_start) - ext_start + 1;
     win_r = min(box_r, ext_end)   - ext_start + 1;
     
-    % Distance (in whole boxes) to the nearest end of the true data.
-    % Negative when the box starts before the data start or ends after the data end.
-    edge_dist = min(floor((box_l - ext_start)./2.^scale), ...
-                    floor((ext_end - box_r)   ./2.^scale));
+    % Distance (in whole boxes) to the nearest border of the EXTENDED data,
+    % within the box's own scale (k-1 boxes on the left, nj-k on the right).
+    edge_dist = min(k-1, nbb./2.^scale - k);
     
     Labels = struct('index', index, ...
                     'scale', scale, ...

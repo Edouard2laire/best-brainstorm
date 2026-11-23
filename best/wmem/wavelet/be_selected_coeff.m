@@ -63,9 +63,8 @@ fs  = OPTIONS.automatic.sampling_rate;
 % By default, we keep 99pc of power for EEG/MEG, 100% of power for fNIRS
 pc_power = OPTIONS.wavelet.energy_threshold;
 
-% Number of boxes treated as edge effect at each end of the TRUE data
-% (see edge_dist in be_wavelet_box_labels). Boxes in the zero padding or
-% straddling the data edge have edge_dist < 0 and are removed too.
+    % Number of boxes treated as edge effect at each border of each scale of
+    % the EXTENDED data (see edge_dist in be_wavelet_box_labels).
 % Edge boxes are removed BEFORE the power selection, so they do not count
 % in the total power.
 n_edge = OPTIONS.wavelet.edge_boxes;
