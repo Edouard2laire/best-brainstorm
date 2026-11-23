@@ -74,8 +74,9 @@ nmod = length(OPTIONS.mandatory.DataTypes);
 Sel  = cell(1, nmod);
 
 for iMod = 1:nmod
-    Labels  =  obj.box_labels(iMod);
-    Labels  = be_labels_subset(Labels, Labels.edge_dist >= n_edge);
+        Labels  = obj.box_labels(iMod);
+        % approximation boxes are labelled but never selected (as before)
+        Labels  = be_labels_subset(Labels, Labels.edge_dist >= n_edge & ~Labels.is_approx);
     Sel{iMod} = be_select_boxes_by_power(Labels, pc_power);
 end
 
